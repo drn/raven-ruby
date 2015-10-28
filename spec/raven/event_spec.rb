@@ -427,24 +427,44 @@ describe Raven::Event do
     end
 
     context 'for an excluded exception type' do
-      it 'returns nil for a string match' do
-        config = Raven::Configuration.new
-        config.excluded_exceptions << 'RuntimeError'
-        expect(Raven::Event.capture_exception(RuntimeError.new,
-                                       :configuration => config)).to be_nil
+      let(:config) { Raven::Configuration.new }
+      let(:capture) {
+        Raven::Event.capture_exception(
+          exception, configuration: config
+        )
+      }
+      before { config.excluded_exceptions << excluded_exceptions }
+
+      context 'SignalException' do
+        let(:excluded_exceptions) { 'SignalException' }
+        let(:exception) { SignalException.new('SIGTERM') }
+
+        it 'returns nil' do
+          expect(capture).to be_nil
+        end
       end
 
-      it 'returns nil for a class match' do
+      context 'string match' do
+        let(:excluded_exceptions) { 'RuntimeError' }
+        let(:exception) { RuntimeError.new }
+
+        it 'returns nil' do
+          expect(capture).to be_nil
+        end
+      end
+
+      context 'class match' do
         module Raven::Test
           class BaseExc < Exception; end
           class SubExc < BaseExc; end
         end
 
-        config = Raven::Configuration.new
-        config.excluded_exceptions << Raven::Test::BaseExc
+        let(:excluded_exceptions) { Raven::Test::SubExc }
+        let(:exception) { Raven::Test::SubExc.new }
 
-        expect(Raven::Event.capture_exception(Raven::Test::SubExc.new,
-                                       :configuration => config)).to be_nil
+        it 'returns nil' do
+          expect(capture).to be_nil
+        end
       end
     end
 
